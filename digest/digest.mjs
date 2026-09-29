@@ -29,6 +29,14 @@ export function parseWaiting(body) {
   return { who, recheck };
 }
 
+// `**Verify:** <what to measure, expected result> · **On:** YYYY-MM-DD`, on a
+// closed issue labelled `verify`: a shipped fix whose proof needs time or data.
+export function parseVerify(body) {
+  const what = body?.match(/\*\*Verify:\*\*\s*(.+?)\s*(?:·|$)/m)?.[1]?.trim() ?? null;
+  const on = body?.match(/\*\*On:\*\*\s*(\d{4}-\d{2}-\d{2})/)?.[1] ?? null;
+  return { what, on };
+}
+
 export function localDate(now, tz) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
 }
@@ -51,7 +59,7 @@ export function shouldRun({ eventName, schedule, now, tz, hour }) {
 const prioOf = labels => labels.find(l => /^p[1-3]$/.test(l)) ?? null;
 const byPriority = (a, b) => (a.prio ?? 'p9').localeCompare(b.prio ?? 'p9') || a.number - b.number;
 
-export function summarize({ open, closed, now, tz }) {
+export function summarize({ open, closed, verify = [], now, tz }) {
   const today = localDate(now, tz);
   const since = now.getTime() - DAY;
   const quietBefore = now.getTime() - QUIET_DAYS * DAY;
@@ -72,9 +80,14 @@ export function summarize({ open, closed, now, tz }) {
     if (!TYPES.some(t => has(i, t))) p.push('no type');
     if (i.states.length > 1) p.push(`${i.states.length} state labels`);
     if (has(i, 'blocked') && !i.recheck) p.push('blocked with no Recheck date');
+    if (has(i, 'verify')) p.push('`verify` on an open issue: it belongs on the closed fix');
     if (p.length) labelProblems.push({ ...i, problem: p.join(', ') });
   }
   const backlog = items.filter(i => i.prio === 'p3' && !i.states.length);
+  const verifying = verify.filter(i => !i.pull_request).map(i => ({
+    number: i.number, title: i.title, url: i.html_url, prio: prioOf(labelsOf(i)), ...parseVerify(i.body),
+  }));
+  for (const v of verifying) if (!v.on) labelProblems.push({ ...v, problem: '`verify` with no **Verify:** … **On:** date line' });
   return {
     today,
     due: items.filter(i => (has(i, 'now') || has(i, 'blocked')) && i.recheck && i.recheck <= today).sort(byPriority),
@@ -82,6 +95,8 @@ export function summarize({ open, closed, now, tz }) {
     quiet: items.filter(i => has(i, 'now') && i.updated < quietBefore)
       .map(i => ({ ...i, days: Math.floor((now.getTime() - i.updated) / DAY) })).sort(byPriority),
     labelProblems,
+    verifyDue: verifying.filter(v => v.on && v.on <= today).sort((a, b) => a.on.localeCompare(b.on)),
+    verifyLater: verifying.filter(v => v.on && v.on > today).sort((a, b) => a.on.localeCompare(b.on)),
     now: items.filter(i => has(i, 'now')).sort(byPriority),
     blocked: items.filter(i => has(i, 'blocked')).sort((a, b) => (a.recheck ?? '9').localeCompare(b.recheck ?? '9')),
     next: items.filter(i => has(i, 'next')).sort(byPriority),
@@ -108,6 +123,7 @@ export function render(title, s) {
   const out = [`<b>${esc(title)}</b> · ${s.today}`, ''];
   const needs = [
     ...s.due.map(i => line(i, ` — recheck ${i.recheck}${i.who ? `, waiting on ${esc(i.who)}` : ''}`)),
+    ...s.verifyDue.map(i => line(i, ` — verify${i.what ? `: ${esc(i.what)}` : ''} (due ${i.on})`)),
     ...s.p1NoState.map(i => line(i, ' — p1 with no state')),
     ...s.quiet.map(i => line(i, ` — <code>now</code>, quiet ${i.days} days`)),
     ...s.labelProblems.map(i => line(i, ` — ${esc(i.problem)}`)),
@@ -117,6 +133,9 @@ export function render(title, s) {
   if (s.blocked.length) {
     out.push(`<b>Blocked</b> (${s.blocked.length})`,
       ...s.blocked.map(i => line(i, ` — ${esc(i.who ?? '?')}${i.recheck ? `, recheck ${i.recheck}` : ''}`)), '');
+  }
+  if (s.verifyLater.length) {
+    out.push(`<b>Verifying</b> (${s.verifyLater.length})`, ...s.verifyLater.map(i => line(i, ` — on ${i.on}`)), '');
   }
   if (s.next.length) {
     out.push(`<b>Next</b> (${s.next.length})`, ...s.next.slice(0, NEXT_SHOWN).map(i => line(i)));
@@ -168,11 +187,12 @@ async function issues(token, repo, query) {
 
 async function digestFor(token, repo, now, tz, title) {
   const since = new Date(now.getTime() - DAY).toISOString();
-  const [open, closed] = await Promise.all([
+  const [open, closed, verify] = await Promise.all([
     issues(token, repo, 'state=open'),
     issues(token, repo, `state=closed&since=${since}`),
+    issues(token, repo, 'state=closed&labels=verify'),
   ]);
-  return render(title ?? repo.split('/')[1], summarize({ open, closed, now, tz }));
+  return render(title ?? repo.split('/')[1], summarize({ open, closed, verify, now, tz }));
 }
 
 async function sendTelegram(text) {

@@ -10,3 +10,4 @@ blocked	b60205	State: waiting on someone outside or on time; body has Waiting on
 p1	b60205	Priority: see AGENTS.md → Work tracking in this repo
 p2	fbca04	Priority: see AGENTS.md → Work tracking in this repo
 p3	c2e0c6	Priority: see AGENTS.md → Work tracking in this repo
+verify	fbca04	A shipped fix waiting for proof; body has Verify and On
