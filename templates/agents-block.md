@@ -1,4 +1,5 @@
 <!-- agent-tracking:start — managed by https://github.com/BohdanMoroz11/agent-tracking; change it there and re-run install -->
+
 ## Work tracking
 
 Work is tracked as GitHub issues in this repo. Keep them right without being asked: the user should never have to remind you. The labels feed a Jira mirror the team reads and a daily Telegram digest the user reads, so a wrong label shows up in both.
@@ -40,4 +41,5 @@ Before opening one, search the open and closed issues (`gh issue list --search`)
 **Overview.** When the user asks what is going on, read the issues (`gh issue list --label now`, `--label next`, `--label blocked`) rather than any doc.
 
 **Jira mirrors GitHub** one way (`.github/workflows/tracking-jira-sync.yml`). Work only in GitHub; edits made in Jira are overwritten.
+
 <!-- agent-tracking:end -->
