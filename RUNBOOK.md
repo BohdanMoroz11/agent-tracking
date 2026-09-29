@@ -12,13 +12,13 @@ You only do this the first time.
 2. **Telegram bot.**
    1. In Telegram, message [@BotFather](https://t.me/BotFather): `/newbot`, pick a name. It replies with the bot token.
    2. Open a chat with your new bot and send it `/start`. (To post to a group instead, add the bot to the group and send `/start@<botname>` there.)
-   3. Find the chat id. The token is read without echoing, so it stays out of your shell history:
+   3. Find the chat id. The token is read without echoing, so it stays out of your shell history. Each line shows a chat that has messaged the bot, with its name, so you can tell which is yours:
 
       ```bash
-      read -rs TG && curl -s "https://api.telegram.org/bot$TG/getUpdates" | grep -o '"chat":{"id":-\?[0-9]*' ; unset TG
+      read -rsp "bot token: " TG; echo; curl -s "https://api.telegram.org/bot$TG/getUpdates" | grep -o '"chat":{"id":-\?[0-9]*,[^}]*'; unset TG
       ```
 
-      A private chat id is a positive number; a group id is negative.
+      A private chat id is a positive number; a group id is negative. **The number before the `:` in the bot token is the bot's own id, not a chat id**: using it fails with "the bot can't send messages to the bot". If nothing prints, send the bot `/start` first.
 3. **This kit** cloned locally: `git clone git@github.com:BohdanMoroz11/agent-tracking.git ~/projects/agent-tracking`, with `gh` logged in and Node 22+.
 
 ## Per project
