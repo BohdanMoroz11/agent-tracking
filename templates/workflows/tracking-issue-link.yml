@@ -1,0 +1,23 @@
+name: Issue link
+
+# Non-blocking: annotates a PR that references no issue, as a reminder of the
+# work-tracking rule in AGENTS.md. It never fails the build. Installed by
+# https://github.com/BohdanMoroz11/agent-tracking — change it there and
+# re-run install, not here.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  check:
+    name: References an issue
+    runs-on: ubuntu-24.04
+    steps:
+      - env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if printf '%s' "$PR_BODY" | grep -Eiq '\b(fix(es|ed)?|close[sd]?|resolve[sd]?|refs?)[: ]+#[0-9]+'; then
+            echo "References an issue."
+          else
+            echo "::warning title=No issue referenced::Add 'Fixes #N' or 'Refs #N' to the PR body if this work has an issue (AGENTS.md → Work tracking)."
+          fi

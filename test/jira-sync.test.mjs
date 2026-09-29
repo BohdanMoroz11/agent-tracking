@@ -54,4 +54,5 @@ test('HTML comments in the body are dropped', () => {
 
 test('the twin comment is recognised', () => {
   assert.equal('Mirrored to Jira as [CF-12](https://x/browse/CF-12). …'.match(TWIN_MARK)[1], 'CF-12');
+  assert.equal('Mirrored to Jira as [CFL20-3](https://x/browse/CFL20-3). …'.match(TWIN_MARK)[1], 'CFL20-3');
 });

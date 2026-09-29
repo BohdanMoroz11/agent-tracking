@@ -42,7 +42,7 @@ node ~/projects/agent-tracking/install.mjs $DIR
 ~/projects/agent-tracking/labels.sh $REPO --prune-defaults     # add a .tsv of extra labels if the project has any
 ```
 
-`install` writes `.github/workflows/tracking-jira-sync.yml` and `tracking-digest.yml`, and puts the shared rules into `AGENTS.md`. Then, by hand or with an agent:
+`install` writes three workflows (`tracking-jira-sync.yml`, `tracking-digest.yml`, and `tracking-issue-link.yml`, a non-blocking warning on a PR that references no issue) and puts the shared rules into `AGENTS.md`. Give the repo a PR template with a `Fixes #` line if it has none. Then, by hand or with an agent:
 
 - **Fill in "Work tracking in this repo"** in `AGENTS.md`: the Jira key, and what `p1` and `p2` mean for *this* product. `p1` is "someone is harmed right now" in its terms: money, data, a customer, a lost lead.
 - **Other agent entry points:** if the repo has `.cursor/rules/`, add a one-line rule that points to AGENTS.md → Work tracking. A `CLAUDE.md` or `.github/copilot-instructions.md` that symlinks to `AGENTS.md` needs nothing.

@@ -14,7 +14,7 @@ Adding a project: [RUNBOOK.md](RUNBOOK.md).
 | --- | --- |
 | `jira-sync/` | Composite action: the Jira mirror (`event`, `backfill`, `discover`) |
 | `digest/` | Composite action: the Telegram digest; `--print` locally for an on-demand overview |
-| `templates/workflows/` | The two workflows `install.mjs` copies into a project |
+| `templates/workflows/` | The workflows `install.mjs` copies into a project: Jira sync, digest, and a non-blocking PR issue-link check |
 | `templates/agents-block.md` | The shared rules, kept between markers in each project's `AGENTS.md` |
 | `templates/agents-project.md` | Stub for the project's own section: Jira key, priority wording, extra labels |
 | `templates/migration-prompt.md` | Prompt for moving a repo's doc-based tracking into issues |
