@@ -29,6 +29,8 @@ Before opening one, search the open and closed issues (`gh issue list --search`)
 
 **While working:** set `now` on the issue you start, replacing any other state. A PR body says `Fixes #N` when it completes the issue and `Refs #N` when it is partial. New facts that change an issue go in a comment on it.
 
+**A fix that needs time or data to prove** (a week of traffic, a few nightly runs): the PR says `Refs #N`, and the issue stays open as `blocked` with `**Waiting on:** <what to measure and the expected result> · **Recheck:** <date, counted from the deploy>`. On that date, measure: close it if the result held, or put the numbers in a comment and move it back to `next`. A check that should hold forever belongs in the monitoring, not in an issue.
+
 **Before handing back,** at the end of every task and not only the end of the session: comment on each issue you touched with what changed and what is left, correct its labels, and tell the user which issues you opened, closed or moved.
 
 **Closing.** An issue closes when its work ships, or as not planned with a comment `not now: <why>`. Closed issues stay searchable; reopen one if it comes back.
