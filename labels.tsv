@@ -1,0 +1,12 @@
+# name	color	description   (tab-separated; the common set every tracked repo gets)
+bug	d73a4a	Type: something does not work as intended
+feature	1d76db	Type: new capability
+refactor	c5def5	Type: restructure or delete code, no behaviour change
+ops	fbca04	Type: config, accounts, customer requests, infrastructure
+investigation	d4c5f9	Type: find out why; ends in a finding or a new issue
+now	0e8a16	State: being worked on
+next	5319e7	State: queued, taken in priority order
+blocked	b60205	State: waiting on someone outside or on time; body has Waiting on and Recheck
+p1	b60205	Priority: see AGENTS.md → Work tracking in this repo
+p2	fbca04	Priority: see AGENTS.md → Work tracking in this repo
+p3	c2e0c6	Priority: see AGENTS.md → Work tracking in this repo

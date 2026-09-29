@@ -1,0 +1,49 @@
+name: Jira sync
+
+# One-way mirror of this repo's GitHub issues into Jira. GitHub is the source
+# of truth. Installed by https://github.com/BohdanMoroz11/agent-tracking —
+# change it there and re-run install, not here.
+#
+# Issue events sync only once the JIRA_PROJECT_KEY repo variable is set
+# (RUNBOOK.md, step 4). A manual run can name the project itself, so the
+# project can be checked and backfilled in a dry run while the sync is off.
+on:
+  issues:
+    types: [opened, edited, labeled, unlabeled, closed, reopened]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: discover checks the Jira project; backfill syncs every open issue
+        type: choice
+        options: [discover, backfill]
+        default: discover
+      dry_run:
+        description: Log only, write nothing
+        type: boolean
+        default: true
+      project_key:
+        description: Jira project key; defaults to the JIRA_PROJECT_KEY variable
+        default: ''
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: jira-sync-${{ github.event.issue.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: vars.JIRA_PROJECT_KEY != '' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: BohdanMoroz11/agent-tracking/jira-sync@v1
+        with:
+          mode: ${{ github.event_name == 'issues' && 'event' || inputs.mode }}
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          jira-base-url: ${{ secrets.JIRA_BASE_URL }}
+          jira-email: ${{ secrets.JIRA_EMAIL }}
+          jira-api-token: ${{ secrets.JIRA_API_TOKEN }}
+          jira-project-key: ${{ inputs.project_key || vars.JIRA_PROJECT_KEY }}
+          jira-assignee-account-id: ${{ vars.JIRA_ASSIGNEE_ACCOUNT_ID }}

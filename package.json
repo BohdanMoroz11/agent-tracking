@@ -1,0 +1,12 @@
+{
+  "name": "agent-tracking",
+  "private": true,
+  "type": "module",
+  "description": "GitHub issues as the tracker, a one-way Jira mirror, and a daily Telegram digest, for repos worked on by AI agents.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

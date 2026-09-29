@@ -1,0 +1,39 @@
+name: agent-tracking Jira sync
+description: One-way mirror of GitHub issues into a Jira project. GitHub is the source of truth.
+inputs:
+  mode:
+    description: event (sync the triggering issue) | backfill (every open issue) | discover (check the project, write nothing)
+    default: event
+  dry-run:
+    description: Log what would change and write nothing
+    default: 'false'
+  jira-base-url:
+    required: true
+  jira-email:
+    required: true
+  jira-api-token:
+    required: true
+  jira-project-key:
+    required: true
+  jira-assignee-account-id:
+    description: Who new Jira issues are assigned to; defaults to the token's owner
+    default: ''
+  github-token:
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        JIRA_BASE_URL: ${{ inputs.jira-base-url }}
+        JIRA_EMAIL: ${{ inputs.jira-email }}
+        JIRA_API_TOKEN: ${{ inputs.jira-api-token }}
+        JIRA_PROJECT_KEY: ${{ inputs.jira-project-key }}
+        JIRA_ASSIGNEE_ACCOUNT_ID: ${{ inputs.jira-assignee-account-id }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: node "$GITHUB_ACTION_PATH/jira-sync.mjs" "$MODE"

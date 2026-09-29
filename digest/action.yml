@@ -1,0 +1,33 @@
+name: agent-tracking digest
+description: Daily digest of a repo's issues, sent to Telegram.
+inputs:
+  telegram-bot-token:
+    required: true
+  telegram-chat-id:
+    required: true
+  timezone:
+    description: Time zone the digest hour is in
+    default: Europe/Kyiv
+  hour:
+    description: Local hour the digest is sent at; the caller's two crons must bracket it (see RUNBOOK.md)
+    default: '8'
+  title:
+    description: Heading of the message; defaults to the repo name
+    default: ''
+  github-token:
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - shell: bash
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ inputs.telegram-bot-token }}
+        TELEGRAM_CHAT_ID: ${{ inputs.telegram-chat-id }}
+        DIGEST_TZ: ${{ inputs.timezone }}
+        DIGEST_HOUR: ${{ inputs.hour }}
+        DIGEST_TITLE: ${{ inputs.title }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: node "$GITHUB_ACTION_PATH/digest.mjs"

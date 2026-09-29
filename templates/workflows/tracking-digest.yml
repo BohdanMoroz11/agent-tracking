@@ -1,0 +1,28 @@
+name: Tracking digest
+
+# Daily Telegram digest of this repo's issues. Installed by
+# https://github.com/BohdanMoroz11/agent-tracking — change it there and
+# re-run install, not here.
+#
+# Off until the TELEGRAM_CHAT_ID repo variable is set (RUNBOOK.md, step 5).
+# Two crons, one per DST offset: 05:00 and 06:00 UTC are 08:00 in Kyiv in
+# summer and winter. The run whose cron isn't 08:00 local exits at once.
+on:
+  schedule:
+    - cron: '0 5 * * *'
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: read
+
+jobs:
+  digest:
+    if: vars.TELEGRAM_CHAT_ID != ''
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: BohdanMoroz11/agent-tracking/digest@v1
+        with:
+          telegram-bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          telegram-chat-id: ${{ vars.TELEGRAM_CHAT_ID }}
+          title: ${{ vars.DIGEST_TITLE }}
