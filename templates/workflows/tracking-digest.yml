@@ -4,13 +4,13 @@ name: Tracking digest
 # https://github.com/BohdanMoroz11/agent-tracking — change it there and
 # re-run install, not here.
 #
+# No `schedule:` on purpose. GitHub's cron delayed this run by six hours and
+# skipped it on other days, so a timer on the devbox starts it at 08:00 Kyiv
+# through workflow_dispatch instead (HOW-IT-WORKS.md in the kit). Run it by
+# hand from the Actions tab or with `gh workflow run tracking-digest.yml`.
+#
 # Off until the TELEGRAM_CHAT_ID repo variable is set (RUNBOOK.md, step 5).
-# Two crons, one per DST offset: 05:00 and 06:00 UTC are 08:00 in Kyiv in
-# summer and winter. The run whose cron isn't 08:00 local exits at once.
 on:
-  schedule:
-    - cron: '0 5 * * *'
-    - cron: '0 6 * * *'
   workflow_dispatch:
 
 permissions:

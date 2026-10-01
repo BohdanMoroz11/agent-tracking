@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseVerify, parseWaiting, render, shouldRun, summarize, TELEGRAM_LIMIT, toPlain } from '../digest/digest.mjs';
+import { parseVerify, parseWaiting, render, summarize, TELEGRAM_LIMIT, toPlain } from '../digest/digest.mjs';
 
 const TZ = 'Europe/Kyiv';
 const now = new Date('2026-09-30T05:10:00Z'); // 08:10 in Kyiv
@@ -17,19 +17,6 @@ test('the Waiting line is parsed', () => {
   });
   assert.deepEqual(parseWaiting('## What\nnothing'), { who: null, recheck: null });
   assert.deepEqual(parseWaiting(null), { who: null, recheck: null });
-});
-
-test('only the cron that lands on the local hour runs', () => {
-  const summer = new Date('2026-07-01T05:03:00Z');
-  const winter = new Date('2026-01-15T06:20:00Z');
-  const run = (schedule, at) => shouldRun({ eventName: 'schedule', schedule, now: at, tz: TZ, hour: 8 });
-  assert.equal(run('0 5 * * *', summer), true);
-  assert.equal(run('0 6 * * *', summer), false);
-  assert.equal(run('0 5 * * *', winter), false);
-  assert.equal(run('0 6 * * *', winter), true);
-  // A late start still counts: the cron decides, not the clock.
-  assert.equal(run('0 5 * * *', new Date('2026-07-01T06:40:00Z')), true);
-  assert.equal(shouldRun({ eventName: 'workflow_dispatch', now: summer, tz: TZ, hour: 8 }), true);
 });
 
 test('the digest sorts issues into what needs the user and what is in flight', () => {

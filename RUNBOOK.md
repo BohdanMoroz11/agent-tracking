@@ -20,6 +20,9 @@ You only do this the first time.
 
       A private chat id is a positive number; a group id is negative. **The number before the `:` in the bot token is the bot's own id, not a chat id**: using it fails with "the bot can't send messages to the bot". If nothing prints, send the bot `/start` first.
 3. **This kit** cloned locally: `git clone git@github.com:BohdanMoroz11/agent-tracking.git ~/projects/agent-tracking`, with `gh` logged in and Node 22+.
+4. **The digest timer** on the devbox, which starts every project's digest at 08:00 Kyiv ([why not GitHub's cron](HOW-IT-WORKS.md#the-daily-digest)):
+   1. A classic GitHub token with the `repo` and `workflow` scopes, in `~/.gh-token.txt` with mode 600. It only needs to start workflows in the tracked repos.
+   2. `~/projects/agent-tracking/scheduler/install.sh`. It installs a systemd user timer, and creates `~/.config/agent-tracking/repos`, the list of repos it starts.
 
 ## Per project
 
@@ -102,6 +105,7 @@ From now on, every issue change syncs on its own. New Jira issues are assigned t
 gh secret set   TELEGRAM_BOT_TOKEN --repo $REPO
 gh variable set TELEGRAM_CHAT_ID   --repo $REPO --body <chat id>
 gh workflow run tracking-digest.yml --repo $REPO      # sends one now, to check
+echo $REPO >> ~/.config/agent-tracking/repos          # the devbox timer starts it every day from now on
 ```
 
 It then arrives every day at 08:00 Kyiv time. Set the `DIGEST_TITLE` variable to change the heading from the repo name.
@@ -116,7 +120,7 @@ node ~/projects/agent-tracking/digest/digest.mjs --print --repo owner/a --repo o
 
 - The PR from step 2 is merged.
 - `discover` says `ready`, the backfill has run, and a test issue edit shows up in Jira within a minute.
-- The test digest arrived in Telegram.
+- The test digest arrived in Telegram, and the repo is in `~/.config/agent-tracking/repos`.
 - The repo's docs no longer hold any status.
 
 ## Changing the kit
@@ -136,5 +140,5 @@ node ~/projects/agent-tracking/digest/digest.mjs --print --repo owner/a --repo o
 - **`no transition to "Blocked"`:** the Jira workflow lacks the status, or has no transition to it. See step 1.
 - **`Jira refused the priority field`:** Priority is not on that issue type's layout. The sync carries on without it.
 - **A duplicate Jira issue:** each GitHub issue gets a `Mirrored to Jira as KEY` comment, and the sync follows it. Deleting that comment makes the next event create a second issue.
-- **No digest one day:** GitHub delays scheduled runs under load and very occasionally drops one. Check the Actions tab. The next day's run is not affected.
+- **No digest one day:** see [HOW-IT-WORKS.md → When the digest doesn't arrive](HOW-IT-WORKS.md#when-the-digest-doesnt-arrive).
 - **An org blocks the action:** the org's Actions settings must allow actions from `BohdanMoroz11/agent-tracking`, or all actions.

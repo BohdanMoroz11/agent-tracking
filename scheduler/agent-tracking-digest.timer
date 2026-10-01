@@ -1,0 +1,11 @@
+[Unit]
+Description=agent-tracking: daily digest at 08:00 Kyiv time
+
+[Timer]
+# The time zone is explicit, so the devbox's own zone and DST don't matter.
+OnCalendar=*-*-* 08:00:00 Europe/Kyiv
+# If the devbox was off or asleep at 08:00, run as soon as it is back.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

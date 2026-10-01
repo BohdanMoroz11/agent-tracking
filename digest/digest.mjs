@@ -4,13 +4,13 @@
 // It stores nothing, so it cannot go stale.
 //
 //   node digest.mjs                                  # in Actions: $GITHUB_REPOSITORY → Telegram
+//                                                    # (started at 08:00 Kyiv by the devbox timer, HOW-IT-WORKS.md)
 //   node digest.mjs --print --repo owner/a --repo owner/b   # locally: print, send nothing
 //
 // Env (Actions): GITHUB_TOKEN, GITHUB_REPOSITORY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID,
-//                DIGEST_TZ (default Europe/Kyiv), DIGEST_HOUR (default 8), DIGEST_TITLE (optional).
+//                DIGEST_TZ (default Europe/Kyiv, for the date), DIGEST_TITLE (optional).
 // Locally the GitHub token comes from GITHUB_TOKEN or `gh auth token`.
 import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 
 const DAY = 24 * 60 * 60 * 1000;
 export const QUIET_DAYS = 7;
@@ -39,21 +39,6 @@ export function parseVerify(body) {
 
 export function localDate(now, tz) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
-}
-
-function localHour(instant, tz) {
-  return Number(new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', hourCycle: 'h23' }).format(instant));
-}
-
-// The workflow schedules the digest at two UTC hours, one per DST offset. A
-// scheduled run goes ahead only if the cron that fired it lands on the wanted
-// local hour today. Checking the cron rather than the clock keeps a run that
-// GitHub starts late from being skipped.
-export function shouldRun({ eventName, schedule, now, tz, hour }) {
-  if (eventName !== 'schedule' || !schedule) return true;
-  const [m, h] = schedule.trim().split(/\s+/).map(Number);
-  const fired = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), h, m));
-  return localHour(fired, tz) === hour;
 }
 
 const prioOf = labels => labels.find(l => /^p[1-3]$/.test(l)) ?? null;
@@ -207,7 +192,6 @@ async function sendTelegram(text) {
 async function main() {
   const args = process.argv.slice(2);
   const tz = process.env.DIGEST_TZ || 'Europe/Kyiv';
-  const hour = Number(process.env.DIGEST_HOUR || 8);
   const now = new Date();
 
   if (args.includes('--print')) {
@@ -218,12 +202,6 @@ async function main() {
     return;
   }
 
-  const eventName = process.env.GITHUB_EVENT_NAME;
-  const schedule = eventName === 'schedule' ? JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8')).schedule : null;
-  if (!shouldRun({ eventName, schedule, now, tz, hour })) {
-    console.log(`cron "${schedule}" is not ${hour}:00 in ${tz} today; the other cron sends the digest`);
-    return;
-  }
   for (const name of ['GITHUB_TOKEN', 'GITHUB_REPOSITORY', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID']) {
     if (!process.env[name]) throw new Error(`${name} is not set`);
   }

@@ -6,11 +6,8 @@ inputs:
   telegram-chat-id:
     required: true
   timezone:
-    description: Time zone the digest hour is in
+    description: Time zone for the digest's date
     default: Europe/Kyiv
-  hour:
-    description: Local hour the digest is sent at; the caller's two crons must bracket it (see RUNBOOK.md)
-    default: '8'
   title:
     description: Heading of the message; defaults to the repo name
     default: ''
@@ -27,7 +24,6 @@ runs:
         TELEGRAM_BOT_TOKEN: ${{ inputs.telegram-bot-token }}
         TELEGRAM_CHAT_ID: ${{ inputs.telegram-chat-id }}
         DIGEST_TZ: ${{ inputs.timezone }}
-        DIGEST_HOUR: ${{ inputs.hour }}
         DIGEST_TITLE: ${{ inputs.title }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
       run: node "$GITHUB_ACTION_PATH/digest.mjs"

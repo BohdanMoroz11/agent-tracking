@@ -1,0 +1,9 @@
+[Unit]
+Description=agent-tracking: start the daily Telegram digest in every tracked repo
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Installed by scheduler/install.sh, which fills in the kit's path.
+ExecStart=%KIT%/scheduler/dispatch-digests.sh
