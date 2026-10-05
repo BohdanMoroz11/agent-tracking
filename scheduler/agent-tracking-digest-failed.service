@@ -1,0 +1,7 @@
+[Unit]
+Description=agent-tracking: alert on Telegram that the digest timer failed
+
+[Service]
+Type=oneshot
+# Installed by scheduler/install.sh, which fills in the kit's path.
+ExecStart=%KIT%/scheduler/notify-failure.sh

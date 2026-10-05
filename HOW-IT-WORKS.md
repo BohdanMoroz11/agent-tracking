@@ -25,7 +25,7 @@ Every moving part of the tracking setup, where it runs, what starts it, and what
 | Rules for agents | each repo's `AGENTS.md`, between the `agent-tracking` markers, plus its own "Work tracking in this repo" section | read by every agent at session start | nothing |
 | Jira mirror | `jira-sync/` here; `.github/workflows/tracking-jira-sync.yml` in each repo | every issue event (opened, edited, labeled, closed…), or by hand for `discover` / `backfill` | secrets `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`; variable `JIRA_PROJECT_KEY` (unset = off) |
 | Daily digest | `digest/` here; `.github/workflows/tracking-digest.yml` in each repo | `workflow_dispatch` only: the devbox timer, or by hand | secret `TELEGRAM_BOT_TOKEN`; variable `TELEGRAM_CHAT_ID` (unset = off); optional `DIGEST_TITLE` |
-| Digest timer | `scheduler/` here, installed as systemd user units on the devbox | systemd, every day at 08:00 Europe/Kyiv | `~/.gh-token.txt` (classic token, `repo` + `workflow`); `~/.config/agent-tracking/repos` |
+| Digest timer | `scheduler/` here, installed as systemd user units on the devbox | systemd, every day at 08:00 Europe/Kyiv | `~/.gh-token.txt` (classic token, `repo` + `workflow`); `~/.config/agent-tracking/repos`; for the failure alert, `~/.config/agent-tracking/telegram.env` |
 | PR ↔ issue check | `.github/workflows/tracking-issue-link.yml` in each repo | every PR | nothing; it only warns, never fails |
 | Labels | `labels.tsv` here, plus each repo's `.github/tracking-labels.tsv` | `labels.sh`, by hand | `gh` |
 
@@ -39,6 +39,15 @@ The devbox timer runs `scheduler/dispatch-digests.sh`, which asks GitHub to star
 
 **The devbox is the dependency.** If it is off for a day, the digest comes when it is back on, not at 08:00.
 
+**A failed run alerts.** The service has `OnFailure=agent-tracking-digest-failed.service`, which sends a Telegram message with the log lines that say why (`scheduler/notify-failure.sh`). It reads the bot token and chat id from `~/.config/agent-tracking/telegram.env` (mode 600, lines `TELEGRAM_BOT_TOKEN=…` and `TELEGRAM_CHAT_ID=…`). Without that file a failure is only a journal line, which is how the first outage went unnoticed for four days (2026-10-02 to 10-05).
+
+**Test it through systemd, never from your shell.** The timer runs with the bare system `PATH`, without anything a shell profile adds: fnm's node, nvm, `~/.local/bin`. The first version called `node`, worked in every manual test and failed on every timer run. The scripts now use only bash, curl, grep and sed. To test exactly what the timer runs (this sends every listed digest):
+
+```bash
+systemctl --user start agent-tracking-digest.service
+journalctl --user -u agent-tracking-digest.service -n 6 -o cat
+```
+
 ## When the digest doesn't arrive
 
 1. **Did the timer fire?**
@@ -46,6 +55,7 @@ The devbox timer runs `scheduler/dispatch-digests.sh`, which asks GitHub to star
    - `journalctl --user -u agent-tracking-digest.service --since today` shows one line per repo, either "digest started" or the HTTP error.
 2. **Did the runs succeed?** `gh run list --repo <repo> --workflow tracking-digest.yml --limit 3`, then `gh run view <id> --log` for a failure. The log prints the digest before sending it, so a Telegram error is easy to tell apart from a GitHub one.
 3. **The usual causes:**
+   - **`command not found` in the journal:** the script calls something that is not on systemd's `PATH`. See "Test it through systemd" above.
    - **HTTP 401 from the dispatch:** the token in `~/.gh-token.txt` expired or was revoked.
    - **`Telegram sendMessage → 403`:** `TELEGRAM_CHAT_ID` is wrong. The bot's own id, which is the number before the `:` in its token, is not a chat id.
    - **The run is "skipped":** the repo has no `TELEGRAM_CHAT_ID` variable.

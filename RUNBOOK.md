@@ -22,7 +22,8 @@ You only do this the first time.
 3. **This kit** cloned locally: `git clone git@github.com:BohdanMoroz11/agent-tracking.git ~/projects/agent-tracking`, with `gh` logged in and Node 22+.
 4. **The digest timer** on the devbox, which starts every project's digest at 08:00 Kyiv ([why not GitHub's cron](HOW-IT-WORKS.md#the-daily-digest)):
    1. A classic GitHub token with the `repo` and `workflow` scopes, in `~/.gh-token.txt` with mode 600. It only needs to start workflows in the tracked repos.
-   2. `~/projects/agent-tracking/scheduler/install.sh`. It installs a systemd user timer, and creates `~/.config/agent-tracking/repos`, the list of repos it starts.
+   2. `~/.config/agent-tracking/telegram.env`, mode 600, with `TELEGRAM_BOT_TOKEN=…` and `TELEGRAM_CHAT_ID=…`, so a failed timer run alerts you instead of failing silently.
+   3. `~/projects/agent-tracking/scheduler/install.sh`. It installs a systemd user timer, and creates `~/.config/agent-tracking/repos`, the list of repos it starts. Then test it **through systemd**, as the script prints. A run from your own shell can pass while the timer fails, as [HOW-IT-WORKS](HOW-IT-WORKS.md#the-daily-digest) explains.
 
 ## Per project
 

@@ -2,6 +2,8 @@
 Description=agent-tracking: start the daily Telegram digest in every tracked repo
 Wants=network-online.target
 After=network-online.target
+# A failure sends a Telegram alert instead of only a journal line.
+OnFailure=agent-tracking-digest-failed.service
 
 [Service]
 Type=oneshot

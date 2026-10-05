@@ -43,7 +43,12 @@ for repo in "${repos[@]}"; do
   if [[ "$code" != 200 ]]; then
     echo "$repo: cannot read the repo (HTTP $code)" >&2; failed=1; continue
   fi
-  branch=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).default_branch)' /tmp/agent-tracking-dispatch.$$)
+  # Plain grep/sed, not node or jq: under systemd the PATH is the bare system
+  # one, and node (installed through fnm) is not on it.
+  branch=$(grep -o '"default_branch": *"[^"]*"' /tmp/agent-tracking-dispatch.$$ | sed 's/.*"\([^"]*\)"$/\1/')
+  if [[ -z "$branch" ]]; then
+    echo "$repo: no default branch in the API reply" >&2; failed=1; continue
+  fi
   code=$(api -X POST "https://api.github.com/repos/$repo/actions/workflows/$WORKFLOW/dispatches" -d "{\"ref\":\"$branch\"}")
   if [[ "$code" == 204 ]]; then
     echo "$repo: digest started"
