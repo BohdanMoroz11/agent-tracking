@@ -1,5 +1,5 @@
 [Unit]
-Description=agent-tracking: alert on Telegram that the digest timer failed
+Description=agent-tracking: alert on Telegram that the morning brief failed
 
 [Service]
 Type=oneshot

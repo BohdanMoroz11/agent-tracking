@@ -3,11 +3,11 @@
 //
 //   node install.mjs <path-to-project>
 //
-// Copies the two workflows into .github/workflows/, and writes the shared
+// Copies the workflows into .github/workflows/ (removing ones the kit dropped), and writes the shared
 // Work tracking rules into AGENTS.md between the agent-tracking markers. The
 // project's own section ("Work tracking in this repo") is added once from a
 // stub and never touched again. Safe to re-run: that is how an update lands.
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,6 +15,9 @@ const KIT = dirname(fileURLToPath(import.meta.url));
 const START = '<!-- agent-tracking:start';
 const END = '<!-- agent-tracking:end -->';
 export const PROJECT_HEADING = '## Work tracking in this repo';
+// Workflows an older install wrote that the kit no longer ships. The daily
+// digest became the morning brief, which runs on the devbox (brief/).
+const OBSOLETE_WORKFLOWS = ['tracking-digest.yml'];
 
 // Returns AGENTS.md with the managed block in place: replaced if the markers
 // exist, otherwise inserted before the first `## ` section (after the title
@@ -41,6 +44,12 @@ function main() {
   for (const f of readdirSync(join(KIT, 'templates', 'workflows'))) {
     copyFileSync(join(KIT, 'templates', 'workflows', f), join(wfDir, f));
     console.log(`wrote .github/workflows/${f}`);
+  }
+  for (const f of OBSOLETE_WORKFLOWS) {
+    if (existsSync(join(wfDir, f))) {
+      rmSync(join(wfDir, f));
+      console.log(`removed .github/workflows/${f} (no longer part of the kit)`);
+    }
   }
 
   // AGENTS.md is often the real file behind a CLAUDE.md symlink; resolve it so

@@ -1,6 +1,6 @@
 # Runbook: adding a project
 
-Adds a repo to the pipeline: GitHub issues as the tracker, rules the agents follow, a one-way Jira mirror, and a daily Telegram digest. About an hour, most of it reviewing the migration.
+Adds a repo to the pipeline: GitHub issues as the tracker, rules the agents follow, a one-way Jira mirror, and the morning brief on Telegram. About an hour, most of it reviewing the migration.
 
 Each step is safe on its own. The workflows do nothing until their repo variable is set, so a project can be installed today and connected to Jira next week.
 
@@ -20,10 +20,10 @@ You only do this the first time.
 
       A private chat id is a positive number; a group id is negative. **The number before the `:` in the bot token is the bot's own id, not a chat id**: using it fails with "the bot can't send messages to the bot". If nothing prints, send the bot `/start` first.
 3. **This kit** cloned locally: `git clone git@github.com:BohdanMoroz11/agent-tracking.git ~/projects/agent-tracking`, with `gh` logged in and Node 22+.
-4. **The digest timer** on the devbox, which starts every project's digest at 08:00 Kyiv ([why not GitHub's cron](HOW-IT-WORKS.md#the-daily-digest)):
-   1. A classic GitHub token with the `repo` and `workflow` scopes, in `~/.gh-token.txt` with mode 600. It only needs to start workflows in the tracked repos.
-   2. `~/.config/agent-tracking/telegram.env`, mode 600, with `TELEGRAM_BOT_TOKEN=…` and `TELEGRAM_CHAT_ID=…`, so a failed timer run alerts you instead of failing silently.
-   3. `~/projects/agent-tracking/scheduler/install.sh`. It installs a systemd user timer, and creates `~/.config/agent-tracking/repos`, the list of repos it starts. Then test it **through systemd**, as the script prints. A run from your own shell can pass while the timer fails, as [HOW-IT-WORKS](HOW-IT-WORKS.md#the-daily-digest) explains.
+4. **The brief timer** on the devbox, which sends the morning brief at 08:00 Kyiv ([how it works](HOW-IT-WORKS.md#the-morning-brief)):
+   1. `claude` installed and logged in, with the same settings you work with (it runs in auto mode and reads production the way your sessions do), and `gh` logged in.
+   2. `~/.config/agent-tracking/telegram.env`, mode 600, with `TELEGRAM_BOT_TOKEN=…` and `TELEGRAM_CHAT_ID=…`. The brief and the failure alert are sent with it.
+   3. `~/projects/agent-tracking/scheduler/install.sh`. It installs a systemd user timer, and creates `~/.config/agent-tracking/repos`, the list of repos the brief covers. Then test it **through systemd**, as the script prints. A run from your own shell can pass while the timer fails, as [HOW-IT-WORKS](HOW-IT-WORKS.md#the-morning-brief) explains.
 
 ## Per project
 
@@ -46,7 +46,7 @@ node ~/projects/agent-tracking/install.mjs $DIR
 ~/projects/agent-tracking/labels.sh $REPO --prune-defaults     # add a .tsv of extra labels if the project has any
 ```
 
-`install` writes three workflows (`tracking-jira-sync.yml`, `tracking-digest.yml`, and `tracking-issue-link.yml`, a non-blocking warning on a PR that references no issue) and puts the shared rules into `AGENTS.md`. Give the repo a PR template with a `Fixes #` line if it has none. Then, by hand or with an agent:
+`install` writes three workflows (`tracking-jira-sync.yml`, `tracking-on-close.yml`, which clears an issue's state when it closes, and `tracking-issue-link.yml`, a non-blocking warning on a PR that references no issue), removes the ones the kit no longer ships, and puts the shared rules into `AGENTS.md`. Give the repo a PR template with a `Fixes #` line if it has none. Then, by hand or with an agent:
 
 - **Fill in "Work tracking in this repo"** in `AGENTS.md`: the Jira key, and what `p1` and `p2` mean for *this* product. `p1` is "someone is harmed right now" in its terms: money, data, a customer, a lost lead.
 - **Other agent entry points:** if the repo has `.cursor/rules/`, add a one-line rule that points to AGENTS.md → Work tracking. A `CLAUDE.md` or `.github/copilot-instructions.md` that symlinks to `AGENTS.md` needs nothing.
@@ -100,33 +100,28 @@ gh workflow run tracking-jira-sync.yml --repo $REPO -f mode=backfill -f dry_run=
 
 From now on, every issue change syncs on its own. New Jira issues are assigned to the token's owner; set the `JIRA_ASSIGNEE_ACCOUNT_ID` variable to assign them to someone else.
 
-### 5. Daily digest
+### 5. Morning brief
+
+Have a checkout of the repo on the devbox (the brief's session runs in it), then add it to the list:
 
 ```bash
-gh secret set   TELEGRAM_BOT_TOKEN --repo $REPO
-gh variable set TELEGRAM_CHAT_ID   --repo $REPO --body <chat id>
-gh workflow run tracking-digest.yml --repo $REPO      # sends one now, to check
-echo $REPO >> ~/.config/agent-tracking/repos          # the devbox timer starts it every day from now on
+echo "$REPO" >> ~/.config/agent-tracking/repos      # or: owner/name ~/path/to/checkout Title
+node ~/projects/agent-tracking/brief/brief.mjs --repo $REPO --force     # one brief now, printed, not sent
 ```
 
-It then arrives every day at 08:00 Kyiv time. Set the `DIGEST_TITLE` variable to change the heading from the repo name.
-
-To see the same view on demand, for any set of repos, without sending anything:
-
-```bash
-node ~/projects/agent-tracking/digest/digest.mjs --print --repo owner/a --repo owner/b
-```
+The printed run already does the due checks, so it may comment on issues. From now on the repo is in the 08:00 brief whenever something happened or came due.
 
 ### Done when
 
 - The PR from step 2 is merged.
 - `discover` says `ready`, the backfill has run, and a test issue edit shows up in Jira within a minute.
-- The test digest arrived in Telegram, and the repo is in `~/.config/agent-tracking/repos`.
+- The repo is in `~/.config/agent-tracking/repos`, and a printed brief for it reads right.
 - The repo's docs no longer hold any status.
 
 ## Changing the kit
 
-- **Scripts** (`jira-sync/`, `digest/`): every project runs them from the `v1` tag, so a change reaches all projects once the tag moves:
+- **The brief** (`brief/`, `scheduler/`) runs from this checkout on the devbox: a change lands with `git pull`; re-run `scheduler/install.sh` when a unit changes.
+- **Scripts** (`jira-sync/`): every project runs them from the `v1` tag, so a change reaches all projects once the tag moves:
 
   ```bash
   node --test && git push && git tag -f v1 && git push -f origin v1
@@ -137,9 +132,9 @@ node ~/projects/agent-tracking/digest/digest.mjs --print --repo owner/a --repo o
 
 ## Troubleshooting
 
-- **Issue events don't sync:** `JIRA_PROJECT_KEY` is not set on the repo. Likewise, the digest is skipped until `TELEGRAM_CHAT_ID` is set.
+- **Issue events don't sync:** `JIRA_PROJECT_KEY` is not set on the repo.
 - **`no transition to "Blocked"`:** the Jira workflow lacks the status, or has no transition to it. See step 1.
 - **`Jira refused the priority field`:** Priority is not on that issue type's layout. The sync carries on without it.
 - **A duplicate Jira issue:** each GitHub issue gets a `Mirrored to Jira as KEY` comment, and the sync follows it. Deleting that comment makes the next event create a second issue.
-- **No digest one day:** see [HOW-IT-WORKS.md → When the digest doesn't arrive](HOW-IT-WORKS.md#when-the-digest-doesnt-arrive).
+- **No brief one day:** see [HOW-IT-WORKS.md → When the brief doesn't arrive](HOW-IT-WORKS.md#when-the-brief-doesnt-arrive).
 - **An org blocks the action:** the org's Actions settings must allow actions from `BohdanMoroz11/agent-tracking`, or all actions.

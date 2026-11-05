@@ -1,0 +1,13 @@
+[Unit]
+Description=agent-tracking: the morning brief (an agent session per active repo, one Telegram message)
+Wants=network-online.target
+After=network-online.target
+# A failure sends a Telegram alert instead of only a journal line.
+OnFailure=agent-tracking-brief-failed.service
+
+[Service]
+Type=oneshot
+# Installed by scheduler/install.sh, which fills in the paths. systemd's own
+# PATH has neither node (fnm) nor claude (~/.local/bin), so it is set here.
+Environment=PATH=%PATH%
+ExecStart=%NODE% %KIT%/brief/brief.mjs --send

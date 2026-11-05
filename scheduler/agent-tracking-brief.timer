@@ -1,5 +1,5 @@
 [Unit]
-Description=agent-tracking: daily digest at 08:00 Kyiv time
+Description=agent-tracking: morning brief at 08:00 Kyiv time
 
 [Timer]
 # The time zone is explicit, so the devbox's own zone and DST don't matter.
