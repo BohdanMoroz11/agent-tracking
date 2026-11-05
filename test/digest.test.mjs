@@ -20,7 +20,7 @@ test('the Waiting line is parsed', () => {
 });
 
 test('the digest sorts issues into what needs the user and what is in flight', () => {
-  const due = issue(['ops', 'blocked', 'p2'], { body: '**Waiting on:** TLS · **Recheck:** 2026-09-29' });
+  const due = issue(['ops', 'blocked', 'p2'], { body: '**Waiting on:** Acme · **Recheck:** 2026-09-29' });
   const notYet = issue(['ops', 'blocked', 'p3'], { body: '**Waiting on:** AWS · **Recheck:** 2026-10-12' });
   const p1Idle = issue(['bug', 'p1']);
   const quiet = issue(['bug', 'now', 'p2'], { updated_at: ago(9) });
@@ -50,9 +50,9 @@ test('the digest sorts issues into what needs the user and what is in flight', (
   assert.deepEqual(s.closed.map(i => [i.number, i.notPlanned]), [[90, false], [91, true]]);
   assert.deepEqual(s.opened.map(i => i.number), [fresh.number]);
 
-  const text = render('cargo-finance', s);
-  assert.match(text, /<b>cargo-finance<\/b> · 2026-09-30/);
-  assert.match(toPlain(text), /recheck 2026-09-29, waiting on TLS/);
+  const text = render('myapp', s);
+  assert.match(text, /<b>myapp<\/b> · 2026-09-30/);
+  assert.match(toPlain(text), /recheck 2026-09-29, waiting on Acme/);
   assert.match(toPlain(text), /✗ #91 dropped/);
 });
 

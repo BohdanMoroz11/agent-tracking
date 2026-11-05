@@ -44,7 +44,7 @@ State, so each brief knows what it said before: `~/.local/state/agent-tracking/b
 
 **If the agent fails** for a repo, its section carries the plain facts (what is due, what is quiet) and the error, so the brief is never silent. If the whole run fails, `OnFailure=` sends a Telegram alert with the log lines (`scheduler/notify-failure.sh`).
 
-**Cost.** One session per active repo. On 2026-11-05: $0.22 for a light day on shipper-portal, $1.12 for hr-ai with eight checks against production.
+**Cost.** One session per active repo. In the first runs, about $0.20 for a repo on a light day and $1–2 for one with a dozen checks against production.
 
 **Why the devbox, not GitHub Actions.** The digest first ran on GitHub's cron, which started runs six hours late and then skipped them. A session that reads production and that the user can resume has to run where the user's agent setup lives anyway. The devbox is the dependency: if it is off at 08:00, the brief comes when it is back (`Persistent=true`).
 
@@ -82,11 +82,4 @@ To see a brief without sending it: `node brief/brief.mjs [--repo name] [--force]
 
 ## This installation
 
-| Project | Repo | Local checkout | Jira |
-| --- | --- | --- | --- |
-| Cargo Finance | `CargoETL/cargo-finance` | `~/projects/cargo-finance` | `CFL20` |
-| CargoHub | `BohdanMoroz11/shipper-portal` | `~/projects/shipper-portal` | `CSP` |
-| ClaraHR | `AltekLLC/hr-ai` | `~/projects/hr-ai` | `CHA` |
-
-- **All three repos** carry the same Jira credentials. Each has its own `JIRA_PROJECT_KEY`.
-- **The brief** runs on the user's devbox, not on any deployment server, and sends to the chat in `~/.config/agent-tracking/telegram.env`.
+Which projects a devbox tracks, their checkouts and Jira keys, is kept out of this public repo, in a gitignored `INSTALLATION.local.md` next to this file. The list the brief reads is `~/.config/agent-tracking/repos`.

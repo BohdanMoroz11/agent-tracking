@@ -7,13 +7,13 @@ const at = s => new Date(`${s}T06:00:00Z`);
 const issue = body => ({ body, labels: [] });
 
 test('repos file: checkout and title are optional', () => {
-  const [a, b] = parseRepos('# comment\nAltekLLC/hr-ai\nBohdanMoroz11/shipper-portal ~/w/sp CargoHub Portal  # note\n\n');
-  assert.equal(a.name, 'hr-ai');
-  assert.match(a.checkout, /\/projects\/hr-ai$/);
-  assert.equal(a.title, 'hr-ai');
+  const [a, b] = parseRepos('# comment\nacme/api\nacme/portal ~/w/sp Acme Portal  # note\n\n');
+  assert.equal(a.name, 'api');
+  assert.match(a.checkout, /\/projects\/api$/);
+  assert.equal(a.title, 'api');
   assert.match(b.checkout, /\/w\/sp$/);
   assert.ok(!b.checkout.startsWith('~'));
-  assert.equal(b.title, 'CargoHub Portal');
+  assert.equal(b.title, 'Acme Portal');
 });
 
 test('a quiet repo speaks only when a date comes due, or on Monday if anything is overdue', () => {

@@ -57,7 +57,7 @@ Commit on a branch and open a PR. Merging it changes nothing yet, because the wo
 Extra labels file format (tab-separated, `#` comments allowed):
 
 ```
-tenant:tls	0e8a16	Tenant: TLS
+tenant:acme	0e8a16	Tenant: Acme
 ```
 
 ### 3. Migrate tracking out of the docs

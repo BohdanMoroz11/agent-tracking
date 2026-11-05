@@ -25,7 +25,7 @@ export const TYPE_BY_LABEL = { bug: 'Bug', feature: 'Story' }; // everything els
 export const STATUS = { later: 'To Do', next: 'To Do', now: 'In Progress', blocked: 'Blocked', closed: 'Done' };
 export const PRIORITY_BY_LABEL = { p1: 'High', p2: 'Medium', p3: 'Low' }; // unlabeled: Jira's default
 
-// Jira labels cannot contain spaces; `tenant:tls` becomes `tenant-tls`.
+// Jira labels cannot contain spaces; `tenant:acme` becomes `tenant-acme`.
 export const jiraLabel = l => l.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
 
 export function mapIssue(gh) {

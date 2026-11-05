@@ -30,10 +30,10 @@ test('blocked beats next when both are set', () => {
 });
 
 test('labels are made safe for Jira and keep the gh-N link', () => {
-  assert.equal(jiraLabel('tenant:tls'), 'tenant-tls');
+  assert.equal(jiraLabel('tenant:acme'), 'tenant-acme');
   assert.equal(jiraLabel('Good First Issue'), 'good-first-issue');
-  const m = mapIssue(issue({ labels: ['tenant:tls'] }));
-  assert.deepEqual(m.labels, ['github', 'gh-7', 'tenant-tls']);
+  const m = mapIssue(issue({ labels: ['tenant:acme'] }));
+  assert.deepEqual(m.labels, ['github', 'gh-7', 'tenant-acme']);
 });
 
 test('the description links back to GitHub and converts markdown', () => {
@@ -54,5 +54,5 @@ test('HTML comments in the body are dropped', () => {
 
 test('the twin comment is recognised', () => {
   assert.equal('Mirrored to Jira as [CF-12](https://x/browse/CF-12). …'.match(TWIN_MARK)[1], 'CF-12');
-  assert.equal('Mirrored to Jira as [CFL20-3](https://x/browse/CFL20-3). …'.match(TWIN_MARK)[1], 'CFL20-3');
+  assert.equal('Mirrored to Jira as [PROJ-3](https://x/browse/PROJ-3). …'.match(TWIN_MARK)[1], 'PROJ-3');
 });

@@ -6,7 +6,7 @@
 //
 //   node brief/brief.mjs                 # print the brief, send nothing (default for now)
 //   node brief/brief.mjs --send          # also send it to Telegram
-//   node brief/brief.mjs --repo hr-ai    # only this repo (name or owner/name); repeatable
+//   node brief/brief.mjs --repo myapp    # only this repo (name or owner/name); repeatable
 //   node brief/brief.mjs --force         # include repos even when nothing happened
 //   node brief/brief.mjs --dry           # write each repo's prompt to its state dir, run no agent
 //
