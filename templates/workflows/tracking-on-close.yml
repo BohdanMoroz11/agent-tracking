@@ -1,0 +1,36 @@
+name: Tracking cleanup on close
+
+# A closed issue is done, so it keeps no state: this removes `now`, `next` and
+# `blocked`, and a leading `**Waiting on:** … · **Recheck:** …` line, whoever
+# closed it (an agent, a PR's `Fixes #N`, or the user by hand). `verify` and
+# its Verify line stay: they belong on a closed fix. Installed by
+# https://github.com/BohdanMoroz11/agent-tracking — change it there and re-run
+# install, not here.
+on:
+  issues:
+    types: [closed]
+
+permissions:
+  issues: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const params = { ...context.repo, issue_number: issue.number };
+            for (const { name } of issue.labels) {
+              if (['now', 'next', 'blocked'].includes(name)) {
+                await github.rest.issues.removeLabel({ ...params, name });
+                core.info(`removed ${name}`);
+              }
+            }
+            const body = issue.body ?? '';
+            const waiting = /^\s*\*\*Waiting on:\*\*[^\n]*\n*/;
+            if (waiting.test(body)) {
+              await github.rest.issues.update({ ...params, body: body.replace(waiting, '') });
+              core.info('removed the Waiting line');
+            }
