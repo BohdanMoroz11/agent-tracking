@@ -36,3 +36,9 @@ test('telegram: escapes, links issue numbers, and adds the resume line', () => {
   assert.match(html, /<code>cd \/x\/r &amp;&amp; claude --resume abc<\/code>$/);
   assert.doesNotMatch(toTelegram([{ repo: 'o/r', title: 'r', checkout: '/x', text: 'a&#39;b' }]), /href/);
 });
+
+test('telegram: bold lead-ins, code and bullets; no link inside code', () => {
+  const html = toTelegram([{ repo: 'o/r', title: 'r', checkout: '/x', text: '**Needs you**\n- PR #4 waits for a merge\n* driver `ab#1` and `#9`' }]);
+  assert.match(html, /<b>Needs you<\/b>\n• PR <a href="https:\/\/github.com\/o\/r\/issues\/4">#4<\/a> waits/);
+  assert.match(html, /\n• driver <code>ab#1<\/code> and <code>#9<\/code>/);
+});

@@ -111,12 +111,17 @@ export function material({ now, since, open, closedSince, verify, comments, pull
   return out.join('\n');
 }
 
-// Telegram HTML: escape, then link `#123` (GitHub redirects an issue URL to the
-// PR when it is one) and keep the session line copyable.
+// Telegram HTML: escape, turn the small Markdown subset the prompt allows (**bold**,
+// `code`, "- " bullets) into Telegram's, link `#123` (GitHub redirects an issue URL to
+// the PR when it is one) and keep the session line copyable.
 export function toTelegram(sections) {
   const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const md = s => s
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
+    .replace(/^[ \t]*[-*] /gm, '• ');
   return sections.map(s => {
-    const body = esc(s.text).replace(/(^|[\s([])#(\d+)\b/g, (_, pre, n) => `${pre}<a href="https://github.com/${s.repo}/issues/${n}">#${n}</a>`);
+    const body = md(esc(s.text)).replace(/(^|[\s([])#(\d+)\b/g, (_, pre, n) => `${pre}<a href="https://github.com/${s.repo}/issues/${n}">#${n}</a>`);
     const resume = s.sessionId ? `\n<code>cd ${esc(s.checkout.replace(HOME, '~'))} &amp;&amp; claude --resume ${s.sessionId}</code>` : '';
     return `<b>${esc(s.title)}</b>\n${body}${resume}`;
   }).join('\n\n');

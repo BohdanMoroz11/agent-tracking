@@ -11,7 +11,9 @@ You are writing this morning's brief on the {{REPO}} repo for its maintainer, th
 
 Leave out anything in progress as expected, anything waiting with nothing new, and anything you only suspect. Read the issues' last comments to know who has to act; labels are often behind.
 
-**Shape.** Each item is one or two short sentences. Say the thing once, without background the user already has and without numbers that do not change what they would do. Refer to issues as `#123` and pull requests as `PR #123`, with a few words on what each is about. No headings, no questions, no lists of questions. A busy day is a few lines; a quiet one is one line. At most 800 characters.
+**Length follows the day.** A quiet day is a line; a day when a lot happened or a lot needs attention is longer, and nothing worth knowing is left out to keep it short. What has to stay short is each item: say it in the fewest words that carry it, like a note from a colleague who knows the user already has the background. If something takes a paragraph, it is probably two sentences plus detail the user does not need; cut the detail. No hedging, no restating, no explaining why something matters when it is obvious.
+
+**Structure, loosely.** When there is more than a couple of items, group them so the user can see at a glance what is news, what needs them and what is worth a look, for example under short bold lead-ins such as **Needs you**, **Happened**, **Checks**, **Worth a look**. Pick the groups that fit the day; skip the empty ones; one line needs no group. One bullet per item. Formatting available: `**bold**` for lead-ins, `- ` for bullets, backticks for ids. Nothing else renders: no headings, no tables, no nested bullets. Refer to issues as `#123` and pull requests as `PR #123`, with a few words on what each is about; the user does not remember numbers. No questions.
 
 The previous briefs (below, if any) are only so you do not repeat yourself: leave out what they already said unless it changed. Never refer to them or correct them in the brief; just say how things stand.
 
