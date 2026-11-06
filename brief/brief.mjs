@@ -131,13 +131,28 @@ function githubToken() {
   return execFileSync('gh', ['auth', 'token'], { encoding: 'utf8' }).trim();
 }
 
-async function gh(token, path) {
-  const res = await fetch(`https://api.github.com${path}`, {
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
-  });
-  if (!res.ok) throw new Error(`GitHub GET ${path} → ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  return res.json();
+// GitHub reads are retried: a request can land on a pooled connection that went stale
+// while an agent ran, and fail with EPIPE or ECONNRESET without ever reaching GitHub.
+async function gh(token, path, tries = 5) {
+  for (let attempt = 1; ; attempt++) {
+    let res;
+    try {
+      res = await fetch(`https://api.github.com${path}`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+      });
+    } catch (e) {
+      if (attempt >= tries) throw e;
+      await sleep(2000 * attempt ** 2);
+      continue;
+    }
+    if (res.ok) return res.json();
+    const body = (await res.text()).slice(0, 200);
+    if ((res.status >= 500 || res.status === 429) && attempt < tries) { await sleep(2000 * attempt ** 2); continue; }
+    throw new Error(`GitHub GET ${path} → ${res.status}: ${body}`);
+  }
 }
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function all(token, path) {
   const out = [];
@@ -227,32 +242,39 @@ async function main() {
   const template = readFileSync(join(HERE, 'prompt.md'), 'utf8');
   const repos = parseRepos(readFileSync(CONFIG, 'utf8')).filter(r => !only.length || only.includes(r.name) || only.includes(r.repo));
 
-  const sections = [];
+  // Every repo's material is read before any agent runs, so a long session cannot leave
+  // the next repo's reads on stale connections.
+  const gathered = [];
   for (const cfg of repos) {
     const state = stateFor(cfg.name);
     const since = state.since ?? new Date(now.getTime() - DAY);
-    let g;
     try {
-      g = await gather(token, cfg, since, now);
+      gathered.push({ cfg, state, since, g: await gather(token, cfg, since, now) });
     } catch (e) {
-      // One repo's GitHub hiccup must not cost the others their brief.
-      console.error(`${cfg.name}: could not read GitHub: ${e.message}${e.cause ? ` (${e.cause.code ?? e.cause.message})` : ''}`);
-      sections.push({ ...cfg, text: `(could not read GitHub: ${e.message}; no brief for this repo today)` });
-      continue;
+      // Still briefed: the agent reads the issues itself.
+      console.error(`${cfg.name}: could not read GitHub: ${e.message}${e.cause ? ` (${e.cause.code ?? e.cause.message})` : ''}; the agent reads it instead`);
+      gathered.push({ cfg, state, since, g: null, error: e.message });
     }
-    const reasons = shouldBrief({ since, now, tz: TZ, activity: g.activity, open: g.open, verify: g.verify });
+  }
+
+  const sections = [];
+  for (const { cfg, state, since, g, error } of gathered) {
+    const reasons = g ? shouldBrief({ since, now, tz: TZ, activity: g.activity, open: g.open, verify: g.verify }) : ['material unavailable'];
     if (!reasons.length && !force) { console.error(`${cfg.name}: quiet, skipped`); continue; }
+    const body = g
+      ? material({ now, since, ...g })
+      : `The script could not read GitHub for this repo (${error}), so there is no material. Read it yourself with \`gh\`: the open issues, the issues and PRs updated since the last brief, and the closed issues labelled \`verify\`, with the comments of those that matter. Mention in one line that the brief was put together without the usual material.`;
     const prompt = template
       .replaceAll('{{REPO}}', cfg.repo).replace('{{TODAY}}', localDate(now, TZ))
       .replace('{{SINCE}}', state.since ? since.toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : 'never (this is the first)')
-      .replace('{{MATERIAL}}', `${material({ now, since, ...g })}\n\n## The previous briefs\n${state.previous.join('\n\n') || 'none'}`);
+      .replace('{{MATERIAL}}', `${body}\n\n## The previous briefs\n${state.previous.join('\n\n') || 'none'}`);
     if (dry) {
       const file = join(STATE, cfg.name, 'prompt.txt');
       writeFileSync(file, prompt);
       console.error(`${cfg.name}: would brief (${reasons.join(', ') || 'forced'}); prompt in ${file}`);
       continue;
     }
-    console.error(`${cfg.name}: briefing (${reasons.join(', ') || 'forced'}), ${g.comments.size} stories, ${Math.round(prompt.length / 1000)}k chars of material`);
+    console.error(`${cfg.name}: briefing (${reasons.join(', ') || 'forced'}), ${g?.comments.size ?? 0} stories, ${Math.round(prompt.length / 1000)}k chars of material`);
     try {
       const a = runAgent(cfg, prompt);
       console.error(`${cfg.name}: ${a.turns} turns, $${a.cost?.toFixed(2)}`);
@@ -261,9 +283,9 @@ async function main() {
       if (send) state.save(now, a.text);
     } catch (e) {
       // Never silent: the label facts go out instead.
-      const f = g.facts;
+      const f = g?.facts ?? { due: [], verifyDue: [], quiet: [] };
       const lines = [...f.due.map(i => `#${i.number} recheck ${i.recheck}`), ...f.verifyDue.map(i => `#${i.number} verify due ${i.on}`), ...f.quiet.map(i => `#${i.number} quiet ${i.days} days`)];
-      sections.push({ ...cfg, text: `(the agent run failed: ${e.message})\n${lines.join('\n') || 'Nothing due.'}` });
+      sections.push({ ...cfg, text: `(the agent run failed: ${e.message})\n${g ? lines.join('\n') || 'Nothing due.' : `GitHub could not be read either: ${error}`}` });
     }
   }
   if (!sections.length) { console.error('nothing to brief'); return; }
