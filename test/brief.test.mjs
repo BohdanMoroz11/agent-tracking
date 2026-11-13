@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseRepos, shouldBrief, toTelegram } from '../brief/brief.mjs';
+import { parseRepos, shouldBrief, toMessages, toTelegram } from '../brief/brief.mjs';
 
 const TZ = 'Europe/Kyiv';
 const at = s => new Date(`${s}T06:00:00Z`);
@@ -41,4 +41,19 @@ test('telegram: bold lead-ins, code and bullets; no link inside code', () => {
   const html = toTelegram([{ repo: 'o/r', title: 'r', checkout: '/x', text: '**Needs you**\n- PR #4 waits for a merge\n* driver `ab#1` and `#9`' }]);
   assert.match(html, /<b>Needs you<\/b>\n• PR <a href="https:\/\/github.com\/o\/r\/issues\/4">#4<\/a> waits/);
   assert.match(html, /\n• driver <code>ab#1<\/code> and <code>#9<\/code>/);
+});
+
+test('telegram: a long brief splits between lines, every message under the limit with its tags closed', () => {
+  const long = Array.from({ length: 80 }, (_, i) => `- item ${i} about \`order-${i}\` and #${i + 1}, with **some** words to make it longer`).join('\n');
+  const msgs = toMessages('<b>2026-11-13</b>', [
+    { repo: 'o/a', title: 'a', checkout: '/a', sessionId: 's1', text: 'one line' },
+    { repo: 'o/b', title: 'b', checkout: '/b', sessionId: 's2', text: long },
+  ], 1000);
+  assert.ok(msgs.length > 2);
+  assert.match(msgs[0], /^<b>2026-11-13<\/b>\n\n<b>a<\/b>\none line/);
+  for (const m of msgs) {
+    assert.ok(m.length <= 1000);
+    for (const t of ['b', 'code', 'a']) assert.equal((m.match(new RegExp(`<${t}[ >]`, 'g')) ?? []).length, (m.match(new RegExp(`</${t}>`, 'g')) ?? []).length);
+  }
+  assert.match(msgs.at(-1), /claude --resume s2<\/code>$/);
 });

@@ -127,6 +127,31 @@ export function toTelegram(sections) {
   }).join('\n\n');
 }
 
+// Telegram takes 4096 characters a message. Repos go together while they fit; a repo
+// too long for one message is split between lines, never inside one, because every
+// tag above opens and closes on its own line.
+export function toMessages(header, sections, limit = 4000) {
+  const messages = [];
+  let cur = header;
+  const put = block => {
+    if (cur && cur.length + 2 + block.length <= limit) { cur += `\n\n${block}`; return; }
+    // A repo that fits a message of its own starts one; a longer one fills this one first.
+    if (block.length <= limit) { if (cur) messages.push(cur); cur = block; return; }
+    let sep = '\n\n';
+    for (const line of block.split('\n')) {
+      const l = line.length > limit ? `${line.slice(0, limit - 1)}…` : line;
+      if (cur && cur.length + sep.length + l.length > limit) { messages.push(cur); cur = ''; }
+      cur = cur ? `${cur}${sep}${l}` : l;
+      sep = '\n';
+    }
+  };
+  for (const s of sections) put(toTelegram([s]));
+  if (cur) messages.push(cur);
+  return messages;
+}
+
+const plain = html => html.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+
 // ---------------------------------------------------------------- I/O
 
 function githubToken() {
@@ -225,13 +250,23 @@ function runAgent(cfg, prompt) {
   return { sessionId, text: out.result.trim(), cost: out.total_cost_usd, turns: out.num_turns };
 }
 
-async function sendTelegram(text) {
+async function sendTelegram(html) {
+  try { await postTelegram(html, true); }
+  catch (e) {
+    // A formatting slip must not cost the brief: send the same text without formatting.
+    if (!/can't parse entities/.test(e.message)) throw e;
+    console.error(`${e.message}; sent as plain text`);
+    await postTelegram(plain(html), false);
+  }
+}
+
+async function postTelegram(text, html) {
   const env = Object.fromEntries(readFileSync(join(HOME, '.config/agent-tracking/telegram.env'), 'utf8')
     .split('\n').map(l => l.match(/^\s*([A-Z_]+)=(.*)$/)).filter(Boolean).map(m => [m[1], m[2].trim()]));
   const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text, parse_mode: 'HTML', link_preview_options: { is_disabled: true } }),
+    body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text, ...(html && { parse_mode: 'HTML' }), link_preview_options: { is_disabled: true } }),
   });
   if (!res.ok) throw new Error(`Telegram sendMessage → ${res.status}: ${(await res.text()).slice(0, 300)}`);
 }
@@ -263,6 +298,7 @@ async function main() {
   }
 
   const sections = [];
+  const saves = []; // only once the brief is delivered, so an undelivered brief is never taken as told
   for (const { cfg, state, since, g, error } of gathered) {
     const reasons = g ? shouldBrief({ since, now, tz: TZ, activity: g.activity, open: g.open, verify: g.verify }) : ['material unavailable'];
     if (!reasons.length && !force) { console.error(`${cfg.name}: quiet, skipped`); continue; }
@@ -283,9 +319,9 @@ async function main() {
     try {
       const a = runAgent(cfg, prompt);
       console.error(`${cfg.name}: ${a.turns} turns, $${a.cost?.toFixed(2)}`);
-      if (a.text === 'NOTHING') { state.save(now, '(nothing worth saying)'); continue; }
+      if (a.text === 'NOTHING') { saves.push(() => state.save(now, '(nothing worth saying)')); continue; }
       sections.push({ ...cfg, ...a });
-      if (send) state.save(now, a.text);
+      saves.push(() => state.save(now, a.text));
     } catch (e) {
       // Never silent: the label facts go out instead.
       const f = g?.facts ?? { due: [], verifyDue: [], quiet: [] };
@@ -293,14 +329,12 @@ async function main() {
       sections.push({ ...cfg, text: `(the agent run failed: ${e.message})\n${g ? lines.join('\n') || 'Nothing due.' : `GitHub could not be read either: ${error}`}` });
     }
   }
-  if (!sections.length) { console.error('nothing to brief'); return; }
-  const html = `<b>${localDate(now, TZ)}</b>\n\n${toTelegram(sections)}`;
-  console.log(html.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
-  if (send) {
-    // One message when it fits, else one per repo.
-    if (html.length <= 4000) await sendTelegram(html);
-    else for (const s of sections) await sendTelegram(toTelegram([s]).slice(0, 4000));
-  }
+  if (sections.length) {
+    const messages = toMessages(`<b>${localDate(now, TZ)}</b>`, sections);
+    console.log(messages.map(plain).join('\n\n'));
+    if (send) for (const m of messages) await sendTelegram(m);
+  } else console.error('nothing to brief');
+  if (send) for (const save of saves) save();
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
